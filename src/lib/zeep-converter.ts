@@ -1,74 +1,181 @@
-import { TreinusExercise, WorkoutStep, SmartItems } from '@/types/treinus';
+import { SmartItems, TreinusExercise, WorkoutStep } from '@/types/treinus';
 
-/**
- * Converte pace decimal (ex: 4.249) para segundos totais (ex: 255)
- */
-function paceToSeconds(paceDecimal: number | null): string {
-  if (!paceDecimal) return "0";
-  return Math.round(paceDecimal * 60).toString();
+// Ordem estrita de atributos exigida pelo Zepp para evitar erros de importação
+const ZEPP_ATTR_SORT: Record<string, number> = {
+  intervalType: 0,
+  intervalUnit: 1,
+  intervalUnitValue: 2,
+  alertRule: 3,
+  alertRuleDetail: 4,
+  lengthUnit: 5,
+  intervalDesc: 6,
+  intervalTypeI18nKey: 7,
+  intervalUnitI18nKey: 8,
+  alertRuleI18nKey: 9,
+  lengthUnitI18nKey: 10,
+};
+
+interface ZeppTrainingInterval {
+  intervalType: string;
+  intervalUnit: string;
+  intervalUnitValue: string;
+  alertRule: string;
+  alertRuleDetail: string;
+  lengthUnit: number;
+  intervalDesc: string;
+  intervalTypeI18nKey: string;
+  intervalUnitI18nKey?: string;
+  alertRuleI18nKey?: string;
+  lengthUnitI18nKey: string;
 }
 
-export function convertToZeppFormat(treino: TreinusExercise, smartItems: SmartItems | null, username: string) {
-  const children: any[] = [];
+interface ZeppCircle {
+  type: 'CIRCLE';
+  circleTimes: number;
+  children: ZeppSegment[];
+}
 
-  const processStep = (step: WorkoutStep) => {
-    // Se for grupo (Repetir X vezes), o Zepp aceita aninhamento, 
-    // mas o seu exemplo sugere uma estrutura linearizada para compatibilidade.
-    if (step.Steps && step.Steps.length > 0) {
-      step.Steps.forEach(sub => processStep(sub));
-      return;
+interface ZeppNode {
+  type: 'NODE';
+  trainingInterval: Partial<ZeppTrainingInterval>;
+}
+
+type ZeppSegment = ZeppCircle | ZeppNode;
+
+interface ZeppTemplate {
+  username: string;
+  avatar: string;
+  shareUrl: string;
+  title: string;
+  description: string;
+  trainingIntervals: {
+    type: 'PARENT';
+    children: ZeppSegment[];
+  };
+  appName: string;
+  createdAt: number;
+  updatedAt: number;
+  status: 'AVAILABLE';
+  trainingTypeId: number;
+  trainingTypeName: string;
+}
+
+/**
+ * Ordena as chaves do objeto para o padrão Zepp sem perder a tipagem
+ */
+function sortZeppObject(obj: Partial<ZeppTrainingInterval>): Partial<ZeppTrainingInterval> {
+  return Object.fromEntries(
+    Object.entries(obj).sort(
+      (a, b) => (ZEPP_ATTR_SORT[a[0]] ?? 99) - (ZEPP_ATTR_SORT[b[0]] ?? 99)
+    )
+  );
+}
+
+export function convertToZeppFormat(
+  treino: TreinusExercise,
+  smartItems: SmartItems | null,
+): ZeppTemplate {
+
+  const converterSegmento = (step: WorkoutStep): ZeppSegment => {
+    // 1. Lógica de Repetições (CIRCLE)
+    if (step.Repetitions && step.Repetitions > 1 && step.Steps && step.Steps.length > 0) {
+      return {
+        type: 'CIRCLE',
+        circleTimes: step.Repetitions,
+        children: step.Steps.map((subStep) => converterSegmento(subStep)),
+      };
     }
 
-    // Mapeamento de Tipos Zepp baseado no seu exemplo:
-    // 0: warmup, 1: training, 3: recover, 4: relax
-    let intervalType = "1";
-    if (step.SegmentType === 1501) intervalType = "0";
-    else if (step.SegmentType === 1510 || step.SegmentType === 1502) intervalType = "3";
-    else if (step.SegmentType === 1506) intervalType = "4";
+    // 2. Definição Base do Nó (Inicia com campos obrigatórios)
+    let interval: Partial<ZeppTrainingInterval> = {
+      lengthUnit: 0,
+      lengthUnitI18nKey: 'gap_metric',
+    };
 
-    const isDistance = !!step.DistanceMin;
-    const unitValue = isDistance
-      ? (step.DistanceMin! * (step.DistanceMinUnit === 'km' ? 1000 : 1)).toString()
-      : (step.TimeMin || 0).toString();
+    // 3. Mapeamento de SegmentType
+    const segmentConfigs: Record<number, Partial<ZeppTrainingInterval>> = {
+      1501: { intervalType: '0', intervalTypeI18nKey: 'gapType_warmup' },
+      1510: { intervalType: '3', intervalTypeI18nKey: 'gapType_recover' },
+      1502: { intervalType: '3', intervalTypeI18nKey: 'gapType_recover' },
+      1503: { intervalType: '1', intervalTypeI18nKey: 'gapType_training' },
+      1506: { intervalType: '4', intervalTypeI18nKey: 'gapType_relax' },
+    };
 
-    const hasPace = !!step.PaceMin;
-    const alertRuleDetail = hasPace
-      ? `${paceToSeconds(step.PaceMax)}-${paceToSeconds(step.PaceMin)}`
-      : "0-0";
+    interval = { ...interval, ...segmentConfigs[step.SegmentType] };
 
-    children.push({
-      type: "NODE",
-      trainingInterval: {
-        intervalType,
-        intervalUnit: isDistance ? "0" : "1",
-        intervalUnitValue: unitValue,
-        alertRule: hasPace ? "1" : "0",
-        alertRuleDetail,
-        lengthUnit: 0,
-        intervalDesc: step.SummaryText?.split('\r\n')[0] || "Passo",
-        intervalTypeI18nKey: intervalType === "0" ? "gapType_warmup" : intervalType === "3" ? "gapType_recover" : intervalType === "4" ? "gapType_relax" : "gapType_training",
-        lengthUnitI18nKey: "gap_metric"
-      }
-    });
+    // 4. Mapeamento de Duração (Tempo vs Distância)
+    if (step.TimeMax && step.TimeMax > 0) {
+      interval.intervalUnit = '1';
+      interval.intervalUnitValue = Math.round(step.TimeMax).toString();
+    } else if (step.DistanceMax && step.DistanceMax > 0) {
+      let val = step.DistanceMax;
+      if (step.DistanceMaxUnit === 'km') val = val * 1000;
+      interval.intervalUnit = '0';
+      interval.intervalUnitValue = Math.round(val).toString();
+      interval.intervalUnitI18nKey = 'gap_Km';
+    }
+
+    // 5. Mapeamento de Intensidade (Zonas)
+    const intensityConfigs: Record<number, Partial<ZeppTrainingInterval>> = {
+      10007: { alertRule: '1', alertRuleDetail: '295-315', intervalDesc: 'Z1' },
+      10008: { alertRule: '1', alertRuleDetail: '275-295', intervalDesc: 'Z2' },
+      10009: { alertRule: '1', alertRuleDetail: '255-275', intervalDesc: 'Z3' },
+      10010: { alertRule: '1', alertRuleDetail: '220-255', intervalDesc: 'Z4' },
+    };
+
+    if (step.Intensity && intensityConfigs[step.Intensity]) {
+      interval = {
+        ...interval,
+        ...intensityConfigs[step.Intensity],
+        alertRuleI18nKey: 'trainRemind_pace,,gap_Km',
+      };
+    } else if (step.DetailBriefing === 'TROTE') {
+      interval = {
+        ...interval,
+        alertRule: '1',
+        alertRuleDetail: '315-390',
+        intervalDesc: 'Trote',
+        alertRuleI18nKey: 'trainRemind_pace,,gap_Km',
+      };
+    } else if (step.SummaryText?.toUpperCase().includes('CAMINHA')) {
+      interval = {
+        ...interval,
+        alertRule: '0',
+        alertRuleDetail: '0-0',
+        intervalDesc: 'Caminhada',
+      };
+    } else {
+      interval.alertRule = '0';
+      interval.alertRuleDetail = '0-0';
+      interval.intervalDesc = step.SummaryText?.split('\r\n')[0] || 'Passo';
+    }
+
+    // Garantimos que o objeto final contenha todos os campos obrigatórios antes de ordenar
+    const finalInterval = interval as ZeppTrainingInterval;
+
+    return {
+      type: 'NODE',
+      trainingInterval: sortZeppObject(finalInterval),
+    };
   };
 
-  treino.Detail?.List.forEach(step => processStep(step));
+  const exercicios = treino.Detail?.List.map((item) => converterSegmento(item)) || [];
 
   return {
-    username,
-    avatar: "",
-    shareUrl: "https://img-cdn.zepp.com/20230911/outdoor.png",
-    title: `${treino.Date.substring(2, 10).replace(/-/g, '')} ${treino.TypeName}`,
-    description: treino.CourseTypeName || "Plano",
+    username: smartItems?.Athlete?.Name || 'Treinus',
+    avatar: '',
+    shareUrl: smartItems?.Athlete?.PictureImageUrl || 'https://img-cdn.zepp.com/20230911/outdoor.png',
+    title: `${treino.Date.substring(2, 10)} ${treino.TypeName}`,
+    description: treino.CourseTypeName || 'Plano',
     trainingIntervals: {
-      type: "PARENT",
-      children
+      type: 'PARENT',
+      children: exercicios,
     },
-    appName: "com.xiaomi.hm.health",
+    appName: 'com.xiaomi.hm.health',
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    status: "AVAILABLE",
+    status: 'AVAILABLE',
     trainingTypeId: 1,
-    trainingTypeName: "户外跑"
+    trainingTypeName: '户外跑',
   };
 }

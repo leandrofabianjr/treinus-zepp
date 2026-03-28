@@ -10,30 +10,38 @@ import {
   CheckCircle2,
   ChevronLeft,
   Clock,
-  Copy,
   Dumbbell,
-  FileOutput,
   ListChecks,
   Loader2,
   Map,
   Repeat,
+  Share2,
   Smartphone,
   Target,
   Timer,
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
+import { QRCodeSVG } from 'qrcode.react';
 import React from 'react';
 
 export default function TreinoDetalhesPage() {
   const params = useParams();
   const router = useRouter();
 
-  const exercisesPlan = useTreinusDataStore(
-    (state) => state.PeriodizationView?.ExercisesPlan || [],
+  // 1. Seletores simplificados (evita criar novas referências no seletor)
+  const periodizationView = useTreinusDataStore(
+    (state) => state.PeriodizationView,
   );
   const smartItems = useTreinusSessionStore((state) => state.smartItems);
 
+  // 2. Memoize a lista de exercícios para garantir estabilidade referencial
+  const exercisesPlan = React.useMemo(() => {
+    return periodizationView?.ExercisesPlan || [];
+  }, [periodizationView]);
+
+  // 3. Localiza o treino
   const treino = React.useMemo(() => {
+    if (!params.id) return null;
     return exercisesPlan.find((t) => t.IdExercise.toString() === params.id);
   }, [exercisesPlan, params.id]);
 
@@ -66,11 +74,7 @@ export default function TreinoDetalhesPage() {
 
     try {
       // 1. Converte o treino usando o parser que criamos
-      const zeppData = convertToZeppFormat(
-        treino,
-        smartItems,
-        'leandrofabianjr',
-      );
+      const zeppData = convertToZeppFormat(treino, smartItems);
 
       // 2. Salva no GitHub Gist via Server Action
       const result = await createZeppGistAction(params.id as string, zeppData);
@@ -85,6 +89,7 @@ export default function TreinoDetalhesPage() {
         alert('Erro: ' + result.error);
       }
     } catch (err) {
+      console.error(err);
       alert('Erro crítico ao gerar integração.');
     } finally {
       setIsSaving(false);
@@ -115,6 +120,15 @@ export default function TreinoDetalhesPage() {
   const accentBg = isRunning
     ? 'bg-cyan-100 dark:bg-cyan-950/50'
     : 'bg-blue-100 dark:bg-blue-950/50';
+
+  // Lógica de abertura inteligente (Mobile vs PC)
+  const handleOpenZepp = (e: React.MouseEvent) => {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile && zeppDeepLink) {
+      e.preventDefault();
+      window.location.href = zeppDeepLink;
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -198,69 +212,91 @@ export default function TreinoDetalhesPage() {
         </section>
       )}
 
-      <section className="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl space-y-6 shadow-2xl">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-orange-500/20 rounded-2xl">
-            <FileOutput className="w-6 h-6 text-orange-500" />
-          </div>
-          <div>
-            <h3 className="font-bold text-white text-lg">
-              Exportar para Amazfit
-            </h3>
-            <p className="text-zinc-400 text-sm">
-              O treino será exportado para ser lido pelo App Zepp.
-            </p>
+      {/* Seção de Exportação Zepp com QR Code */}
+      <section className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+        <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-500/10 rounded-xl">
+              <Share2 className="w-5 h-5 text-orange-500" />
+            </div>
+            <div>
+              <h3 className="font-bold text-white">Sincronizar com Amazfit</h3>
+              <p className="text-xs text-zinc-500 font-medium tracking-wider">
+                Adicionar o template de treino no Amazfit pelo App Zepp.
+              </p>
+            </div>
           </div>
         </div>
 
-        {!gistUrl ? (
-          <button
-            onClick={handleExportToZepp}
-            disabled={isSaving}
-            className="w-full py-4 bg-orange-500 hover:bg-orange-600 disabled:bg-zinc-800 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 active:scale-95"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Enviando para o Gist...
-              </>
-            ) : (
-              'Gerar Integração Zepp'
-            )}
-          </button>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in zoom-in-95 duration-300">
-            <a
-              href={zeppDeepLink || '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-3 px-6 py-4 bg-white text-black rounded-2xl font-black hover:bg-zinc-200 transition-all active:scale-95"
+        <div className="p-6">
+          {!gistUrl ? (
+            <button
+              onClick={handleExportToZepp}
+              disabled={isSaving}
+              className="w-full py-4 bg-orange-500 hover:bg-orange-600 disabled:bg-zinc-800 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 active:scale-95"
             >
-              <Smartphone className="w-5 h-5" />
-              ABRIR NO APP ZEPP
-            </a>
-
-            <div className="flex items-center gap-2 p-2 bg-zinc-800 rounded-2xl border border-zinc-700">
-              <div className="flex-grow px-3 overflow-hidden">
-                <p className="text-[9px] text-zinc-500 uppercase font-bold">
-                  Gist Raw URL
-                </p>
-                <p className="text-[10px] font-mono text-zinc-300 truncate">
-                  {gistUrl}
-                </p>
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  PREPARANDO DADOS DO TREINO...
+                </>
+              ) : (
+                'GERAR LINK DE IMPORTAÇÃO'
+              )}
+            </button>
+          ) : (
+            <div className="flex flex-col md:flex-row gap-8 items-center">
+              {/* QR Code para Scan no PC */}
+              <div className="bg-white p-4 rounded-2xl shadow-inner shrink-0 group relative">
+                <QRCodeSVG
+                  value={zeppDeepLink || ''}
+                  size={160}
+                  level="H" // High error correction
+                  includeMargin={false}
+                  imageSettings={{
+                    src: 'https://img-cdn.zepp.com/20230911/outdoor.png',
+                    x: undefined,
+                    y: undefined,
+                    height: 24,
+                    width: 24,
+                    excavate: true,
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-white/90 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                  <p className="text-[10px] font-black text-zinc-900 text-center px-2">
+                    ESCANEIE COM A CÂMERA DO CELULAR
+                  </p>
+                </div>
               </div>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(gistUrl);
-                  alert('URL do Gist copiada!');
-                }}
-                className="p-3 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded-xl transition-colors"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
+
+              {/* Ações e Links */}
+              <div className="flex-grow space-y-4 w-full">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-zinc-300">
+                    Link Gerado com Sucesso!
+                  </h4>
+                  <p className="text-xs text-zinc-500">
+                    Clique no botão abaixo se estiver no celular, ou aponte a
+                    câmera para o QR Code ao lado.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  <a
+                    href={zeppDeepLink || '#'}
+                    onClick={handleOpenZepp}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-3 px-6 py-4 bg-white text-black rounded-2xl font-black hover:bg-zinc-200 transition-all active:scale-95"
+                  >
+                    <Smartphone className="w-5 h-5" />
+                    ABRIR NO APP ZEPP
+                  </a>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </section>
 
       <section className="space-y-6">

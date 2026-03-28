@@ -1,5 +1,3 @@
-
-
 export interface AthleteData {
   IdAthlete: number;
   IdTeam: number;
@@ -14,23 +12,6 @@ export interface AthleteData {
   email: string;
 }
 
-export interface DetailItem {
-  IdTRSExerciseSheetDetail: number;
-  IdSmartItemType: number;
-  Order: number;
-  SerieTotal: number | null;
-  SerieCurrent: number | null;
-  RepetitionTotal: number | null;
-  Distance: number | null;
-  DistanceUnit: string | null;
-  TimeAsString: string | null;
-  PaceMin: string | null;
-  Load: number | null;
-  LoadUnit: string | null;
-  IntensityValue: string | null;
-  IsRest: boolean;
-  Note: string | null;
-}
 export interface SmartItems {
   [key: string]: {
     IdSmartItemType: number;
@@ -38,31 +19,44 @@ export interface SmartItems {
     Value: string;
     PictureImageUrl: string | null;
     VideoUrl: string | null;
+    Name: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
   };
 }
+
 export interface WorkoutStep {
   Id: number;
   Order: number;
-  SegmentType: number; // Fundamental para identificar o tipo de esforço
+  SegmentType: number; // Fundamental para identificar o tipo de esforço (1501, 1503, etc)
   SummaryText: string | null;
   DetailBriefing: string | null;
   Repetitions: number | null;
 
+  // Métricas de Volume (Mínimos)
   TimeMin: number | null;
   TimeMinUnit: string | null;
   DistanceMin: number | null;
   DistanceMinUnit: string | null;
 
+  // Métricas de Volume (Máximos - Usados no Conversor Zepp)
+  TimeMax: number | null;
+  TimeMaxUnit: string | null;
+  DistanceMax: number | null;
+  DistanceMaxUnit: string | null;
+
+  // Intensidade e Alvos
   PaceMin: number | null;
   PaceMinUnit: string | null;
   PaceMax: number | null;
   PaceMaxUnit: string | null;
-  Intensity: number | null;
+  Intensity: number | null; // IdItem que cruza com SmartItems
+  IntensityType: number | null; // Usado para validar se existe alvo de intensidade
 
+  // Estrutura Recursiva (CIRCLE no Zepp)
   Steps: WorkoutStep[];
 }
+
 export interface TreinusExercise {
   IdExercise: number;
   Date: string;
@@ -75,7 +69,7 @@ export interface TreinusExercise {
   TimeMaxAsString: string | null;
   Done: number;
   CourseTypeName: string | null;
-  Intensity: number | null;
+  Intensity: number | null; // IdItem da Intensidade Geral
   Detail: {
     List: WorkoutStep[];
     Mode: number;
