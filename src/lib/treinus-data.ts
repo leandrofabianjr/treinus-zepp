@@ -1,3 +1,4 @@
+import { TreinusFullDataResponse } from "@/types/treinus";
 import axios from "axios";
 import { cookies } from "next/headers";
 
@@ -73,7 +74,7 @@ function extrairDadosController(htmlContent: string) {
 /**
  * Função Principal de busca de dados
  */
-export async function getTreinusData() {
+export async function getTreinusData(): Promise<TreinusFullDataResponse | null> {
   const cookieStore = await cookies();
   const allCookies = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; ');
 

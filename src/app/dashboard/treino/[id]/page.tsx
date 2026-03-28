@@ -1,114 +1,309 @@
-// app/dashboard/treino/[id]/page.tsx
 'use client';
 
+import { ParsedStep, parseWorkoutSteps } from '@/lib/treinus-data-parser';
 import { useTreinusDataStore } from '@/store/useTreinusDataStore';
-import { ChevronLeft, Clock, Dumbbell, Map } from 'lucide-react';
+import { useTreinusSessionStore } from '@/store/useTreinusSessionStore';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronLeft,
+  Clock,
+  Dumbbell,
+  ListChecks,
+  Map,
+  Repeat,
+  Target,
+  Timer,
+} from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
+import React from 'react';
 
 export default function TreinoDetalhesPage() {
   const params = useParams();
   const router = useRouter();
+
   const exercisesPlan = useTreinusDataStore(
     (state) => state.PeriodizationView?.ExercisesPlan || [],
   );
+  const smartItems = useTreinusSessionStore((state) => state.smartItems);
 
-  // Busca o treino específico dentro do store pelo ID da URL
-  const treino = exercisesPlan.find(
-    (t) => t.IdExercise.toString() === params.id,
-  );
+  const treino = React.useMemo(() => {
+    return exercisesPlan.find((t) => t.IdExercise.toString() === params.id);
+  }, [exercisesPlan, params.id]);
+
+  /**
+   * Resolve a Intensidade cruzando o ID do exercício com o dicionário de smartItems.
+   * Ignora IntensityName (sempre null) e busca o Value ou TypeName mapeado.
+   */
+  const resolvedIntensity = React.useMemo(() => {
+    if (!treino?.Intensity || !smartItems) return 'N/A';
+
+    const intensityKey = treino.Intensity.toString();
+    const item = smartItems[intensityKey];
+
+    // Prioriza o 'Value' (Ex: "Z2 - LEVE/MODERADO") ou o 'TypeName'
+    return item?.Value || item?.TypeName || 'Não definida';
+  }, [treino, smartItems]);
+
+  const etapas = React.useMemo(() => {
+    if (!treino || !smartItems) return [];
+    return parseWorkoutSteps(treino.Detail?.List || [], smartItems);
+  }, [treino, smartItems]);
 
   if (!treino) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p className="text-zinc-500">Treino não encontrado no cache.</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
+        <AlertCircle className="w-12 h-12 text-zinc-300 mb-4" />
+        <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+          Treino não encontrado
+        </h1>
         <button
-          onClick={() => router.back()}
-          className="mt-4 text-blue-600 font-bold"
+          onClick={() => router.push('/dashboard')}
+          className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-xl font-bold active:scale-95 transition-transform"
         >
-          Voltar
+          Voltar para Planilha
         </button>
       </div>
     );
   }
 
+  const isRunning = treino.GenreName?.toLowerCase().includes('corrida');
+  const accentColor = isRunning
+    ? 'text-cyan-600 dark:text-cyan-400'
+    : 'text-blue-600 dark:text-blue-400';
+  const accentBg = isRunning
+    ? 'bg-cyan-100 dark:bg-cyan-950/50'
+    : 'bg-blue-100 dark:bg-blue-950/50';
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Cabeçalho de Navegação */}
+    <div className="max-w-4xl mx-auto px-4 py-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-2 text-sm font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+        className="group flex items-center gap-2 text-sm font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
       >
-        <ChevronLeft className="w-4 h-4" /> Voltar para Planilha
+        <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        Voltar para a lista
       </button>
 
-      {/* Card Principal de Detalhes */}
-      <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-xl">
-        <div className="p-8 space-y-6">
-          {/* Título e Tags */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-black uppercase rounded-full">
-                {treino.TypeName}
+      <header className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
+        <div className="p-6 md:p-10 space-y-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className={`px-3 py-1 ${accentBg} ${accentColor} text-[10px] font-black uppercase rounded-full tracking-widest`}
+            >
+              {treino.TypeName}
+            </span>
+            {treino.Done > 0 && (
+              <span className="flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-black uppercase rounded-full tracking-widest">
+                <CheckCircle2 className="w-3 h-3" /> Concluído
               </span>
-              <span className="text-zinc-400 text-xs font-medium uppercase tracking-widest">
-                •{' '}
-                {new Date(treino.Date).toLocaleDateString('pt-BR', {
-                  dateStyle: 'full',
-                })}
-              </span>
-            </div>
-
-            <h1 className="text-4xl font-black text-zinc-900 dark:text-zinc-50 leading-tight">
-              {treino.CourseTypeName
-                ? `${treino.TypeName}: ${treino.CourseTypeName}`
-                : treino.TypeName}
-            </h1>
+            )}
+            <span className="text-zinc-400 text-xs font-medium uppercase tracking-widest">
+              {new Date(treino.Date).toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+              })}
+            </span>
           </div>
 
-          {/* Grid de Métricas */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
-              <Map className="w-5 h-5 text-blue-500 mb-2" />
-              <p className="text-[10px] uppercase font-bold text-zinc-400">
-                Distância
-              </p>
-              <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                {treino.Distance} {treino.DistanceUnit}
-              </p>
-            </div>
-            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
-              <Clock className="w-5 h-5 text-purple-500 mb-2" />
-              <p className="text-[10px] uppercase font-bold text-zinc-400">
-                Duração
-              </p>
-              <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                {treino.TimeMinAsString || 'N/A'}
-              </p>
-            </div>
-            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 col-span-2 md:col-span-1">
-              <Dumbbell className="w-5 h-5 text-green-500 mb-2" />
-              <p className="text-[10px] uppercase font-bold text-zinc-400">
-                Intensidade
-              </p>
-              <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                {treino.Intensity || 'Moderada'}
-              </p>
-            </div>
-          </div>
+          <h1 className="text-3xl md:text-5xl font-black text-zinc-900 dark:text-zinc-50 leading-tight tracking-tight">
+            {treino.CourseTypeName
+              ? `${treino.TypeName}: ${treino.CourseTypeName}`
+              : treino.TypeName}
+          </h1>
 
-          {/* Briefing Detalhado */}
-          <div className="space-y-4 pt-4">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-              Instruções do Treinador
-            </h2>
-            <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 shadow-inner">
-              <p className="text-lg text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-line">
-                {treino.Briefing || 'Sem instruções adicionais.'}
-              </p>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+            <InfoTile
+              icon={Map}
+              label="Volume"
+              value={
+                (treino.Distance || 0) > 0
+                  ? `${treino.Distance} ${treino.DistanceUnit}`
+                  : 'N/A'
+              }
+              subValue="Distância prevista"
+            />
+            <InfoTile
+              icon={Clock}
+              label="Tempo"
+              value={treino.TimeMinAsString || 'N/A'}
+              subValue="Duração total"
+            />
+            <InfoTile
+              icon={Target}
+              label="Intensidade"
+              value={resolvedIntensity}
+              subValue="Baseado em SmartItems"
+            />
+            <InfoTile
+              icon={Dumbbell}
+              label="Modalidade"
+              value={treino.GenreName || 'Geral'}
+              subValue="Tipo de atividade"
+            />
           </div>
         </div>
+      </header>
+
+      {treino.Briefing && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 px-2 flex items-center gap-2">
+            Orientação Técnica
+          </h2>
+          <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 p-6 rounded-2xl text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-line shadow-inner">
+            {treino.Briefing}
+          </div>
+        </section>
+      )}
+
+      <section className="space-y-6">
+        <div className="flex items-center gap-3 px-2">
+          <div className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400">
+            <ListChecks className="w-5 h-5" />
+          </div>
+          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+            Execução do Treino
+          </h2>
+        </div>
+
+        {etapas.length > 0 ? (
+          <div className="relative space-y-6 pl-4 md:pl-8 before:absolute before:inset-y-2 before:left-3 md:before:left-3 before:w-0.5 before:bg-zinc-200 before:dark:bg-zinc-800">
+            {etapas.map((etapa: ParsedStep) => (
+              <WorkoutStepRenderer
+                key={etapa.id}
+                etapa={etapa}
+                isRunning={isRunning}
+                accentBg={accentBg}
+                accentColor={accentColor}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="py-12 text-center bg-zinc-50 dark:bg-zinc-900/30 rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 text-zinc-500 italic font-medium">
+            Este treino não possui divisões de etapas estruturadas na planilha.
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function WorkoutStepRenderer({
+  etapa,
+  isRunning,
+  accentBg,
+  accentColor,
+  depth = 0,
+}: {
+  etapa: ParsedStep;
+  isRunning: boolean;
+  accentBg: string;
+  accentColor: string;
+  depth?: number;
+}) {
+  // A lógica de isRest agora é centralizada no parser para evitar duplicação
+  const isRest = etapa.isRest;
+
+  return (
+    <div className="relative flex flex-col gap-4 group animate-in fade-in duration-300">
+      {/* Marcador da Timeline */}
+      {depth === 0 && (
+        <div
+          className={`absolute -left-5 md:-left-8 flex items-center justify-center w-4 h-4 md:w-6 md:h-6 rounded-full border-2 z-10 transition-all
+          ${
+            isRest
+              ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700'
+              : `bg-white dark:bg-zinc-950 ${isRunning ? 'border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.2)]' : 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.2)]'}`
+          }`}
+        >
+          {isRest ? (
+            <Timer className="w-3 h-3 text-zinc-500" />
+          ) : etapa.isGroup ? (
+            <Repeat className="w-3 h-3 text-blue-500" />
+          ) : null}
+        </div>
+      )}
+
+      {/* Card da Etapa */}
+      <div
+        className={`flex-grow grid grid-cols-1 md:grid-cols-[140px_1fr_130px] gap-2 md:gap-4 items-center p-4 md:p-5 rounded-2xl border transition-all
+        ${
+          etapa.isGroup
+            ? 'bg-blue-50/40 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30'
+            : isRest
+              ? 'bg-zinc-50/50 dark:bg-zinc-900/20 border-zinc-100 dark:border-zinc-800 opacity-75'
+              : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-md'
+        }`}
+      >
+        <span
+          className={`text-[10px] font-black uppercase tracking-widest ${etapa.isGroup ? 'text-blue-600 dark:text-blue-400' : isRest ? 'text-zinc-400' : 'text-zinc-500'}`}
+        >
+          {etapa.title}
+        </span>
+
+        <p
+          className={`font-bold text-base md:text-lg ${isRest ? 'text-zinc-500 italic' : 'text-zinc-900 dark:text-zinc-100'}`}
+        >
+          {etapa.description}
+        </p>
+
+        <div className="flex justify-start md:justify-end">
+          {etapa.execution && (
+            <span
+              className={`px-3 py-1 rounded-lg text-xs font-black font-mono tracking-tighter
+              ${isRest ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500' : `${accentBg} ${accentColor} border border-current/10`}`}
+            >
+              {etapa.execution}
+            </span>
+          )}
+        </div>
       </div>
+
+      {/* Sub-etapas Recursivas */}
+      {etapa.subSteps && etapa.subSteps.length > 0 && (
+        <div className="ml-6 md:ml-12 pl-4 border-l-2 border-blue-100 dark:border-blue-900/30 space-y-4 py-2">
+          {etapa.subSteps.map((sub) => (
+            <WorkoutStepRenderer
+              key={sub.id}
+              etapa={sub}
+              isRunning={isRunning}
+              accentBg={accentBg}
+              accentColor={accentColor}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoTile({
+  icon: Icon,
+  label,
+  value,
+  subValue,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  subValue: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-tight">
+        <Icon className="w-3 h-3" /> {label}
+      </div>
+      <p
+        className="text-xl font-black text-zinc-900 dark:text-zinc-100 leading-none truncate pr-2"
+        title={value}
+      >
+        {value}
+      </p>
+      <p className="text-[9px] text-zinc-500 dark:text-zinc-500 font-medium">
+        {subValue}
+      </p>
     </div>
   );
 }
