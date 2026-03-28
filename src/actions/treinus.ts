@@ -1,6 +1,6 @@
 "use server";
 
-import { getExerciseSheetData } from "@/lib/treinus-data";
+import { getTreinusData } from "@/lib/treinus-data";
 import { executeTreinusLogin, executeTreinusLogout } from "@/lib/treinus-login";
 import { redirect } from "next/navigation";
 
@@ -25,11 +25,11 @@ export async function logoutTreinusAction() {
   redirect("/login");
 }
 
-export async function fetchSmartItemsAction() {
+export async function fetchTreinusData() {
   try {
-    const data = await getExerciseSheetData();
+    const data = await getTreinusData();
     if (!data) throw new Error("Sessão expirada");
-    return { success: true, data: data.jsonData };
+    return { success: true, data: data };
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return { success: false, error: "Unauthorized" };

@@ -1,12 +1,12 @@
 'use client';
 
 import { logoutTreinusAction } from '@/actions/treinus';
-import { useSmartItemsStore } from '@/store/useSmartItemsStore';
+import { useTreinusStore } from '@/store/useTreinusStore';
 
 import React from 'react';
 
 export function LogoutButton() {
-  const clearSmartItems = useSmartItemsStore((state) => state.clearSmartItems);
+  const clearSmartItems = useTreinusStore((state) => state.clearTreinusData);
   const [isPending, startTransition] = React.useTransition();
 
   const handleLogout = () => {

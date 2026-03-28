@@ -1,5 +1,11 @@
-import { WorkoutManager } from './WorkoutManager';
+import { TreinosPlanejados } from './TreinosPlanejados';
+import { TreinusDataState } from './TreinusDataState';
 
 export default async function DashboardPage() {
-  return <WorkoutManager />;
+  return (
+    <div>
+      <TreinusDataState />
+      <TreinosPlanejados />
+    </div>
+  );
 }
