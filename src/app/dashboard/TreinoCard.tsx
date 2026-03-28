@@ -1,12 +1,17 @@
 'use client';
 
 import { TreinusExercise } from '@/types/treinus';
-import { Eye, EyeOff, Map, Clock, CheckCircle2 } from 'lucide-react';
-import React, { useState } from 'react';
+import {
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Map,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
 
-/**
- * Componente de Card Individual Melhorado (UI Corrigida)
- */
 export function TreinoCard({ treino }: { treino: TreinusExercise }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -20,13 +25,16 @@ export function TreinoCard({ treino }: { treino: TreinusExercise }) {
   return (
     <div className="group relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all hover:border-blue-400 dark:hover:border-blue-700">
       <div className="flex flex-col sm:flex-row items-start gap-4">
-        
         {/* Lado Esquerdo: Data e Info Principal */}
         <div className="flex items-start gap-4 flex-grow w-full">
           {/* Badge de Data */}
           <div className="flex flex-col items-center justify-center min-w-[60px] p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700">
-            <span className="text-[10px] uppercase font-bold text-zinc-400">{mes}</span>
-            <span className="text-xl font-black text-blue-600 dark:text-blue-400">{dia}</span>
+            <span className="text-[10px] uppercase font-bold text-zinc-400">
+              {mes}
+            </span>
+            <span className="text-xl font-black text-blue-600 dark:text-blue-400">
+              {dia}
+            </span>
           </div>
 
           <div className="flex-grow">
@@ -35,8 +43,7 @@ export function TreinoCard({ treino }: { treino: TreinusExercise }) {
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 uppercase">
                 {treino.TypeName || 'Treino'}
               </span>
-              
-              {/* NOVA TAG DE STATUS (Não sobrepõe mais) */}
+
               {treino.Done > 0 && (
                 <span className="flex items-center gap-1 text-[10px] font-bold text-green-700 dark:text-green-500 bg-green-100 dark:bg-green-950 px-2 py-0.5 rounded-full uppercase">
                   <CheckCircle2 className="w-3.5 h-3.5" />
@@ -68,29 +75,46 @@ export function TreinoCard({ treino }: { treino: TreinusExercise }) {
               {(treino.TimeMinAsString || treino.TimeMaxAsString) && (
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
                   <Clock className="w-3.5 h-3.5" />
-                  {treino.TimeMinAsString || '00:00'} - {treino.TimeMaxAsString || 'N/A'}
+                  {treino.TimeMinAsString || '00:00'} -{' '}
+                  {treino.TimeMaxAsString || 'N/A'}
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Lado Direito / Botão de Expansão (Mobile Friendly) */}
-        <div className="w-full sm:w-auto flex justify-end sm:self-center mt-2 sm:mt-0">
+        {/* Lado Direito / Botões de Ação */}
+        <div className="w-full sm:w-auto flex justify-end items-center gap-2 sm:self-center mt-2 sm:mt-0">
+          {/* Botão para página de detalhes */}
+          <Link
+            href={`/dashboard/treino/${treino.IdExercise}`}
+            className="flex items-center justify-center p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all shadow-sm active:scale-95"
+            title="Ver em tela cheia"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </Link>
+
+          {/* Botão de Expansão (Briefing) */}
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-tighter rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm active:scale-95"
           >
-            {isOpen ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            <span>{isOpen ? 'Ocultar' : 'Ver Treino'}</span>
+            {isOpen ? (
+              <EyeOff className="w-4 h-4" />
+            ) : (
+              <Eye className="w-4 h-4" />
+            )}
+            <span>{isOpen ? 'Fechar' : 'Briefing'}</span>
           </button>
         </div>
       </div>
 
       {/* Seção Expansível (Briefing) */}
-      <div 
+      <div
         className={`grid transition-all duration-300 ease-in-out ${
-          isOpen ? 'grid-rows-[1fr] opacity-100 mt-5 pt-5 border-t border-zinc-100 dark:border-zinc-800' : 'grid-rows-[0fr] opacity-0'
+          isOpen
+            ? 'grid-rows-[1fr] opacity-100 mt-5 pt-5 border-t border-zinc-100 dark:border-zinc-800'
+            : 'grid-rows-[0fr] opacity-0'
         }`}
       >
         <div className="overflow-hidden">
@@ -101,7 +125,9 @@ export function TreinoCard({ treino }: { treino: TreinusExercise }) {
               </p>
             </div>
           ) : (
-            <p className="text-xs italic text-zinc-400 text-center py-4">Nenhuma orientação detalhada para este treino.</p>
+            <p className="text-xs italic text-zinc-400 text-center py-4">
+              Nenhuma orientação detalhada para este treino.
+            </p>
           )}
         </div>
       </div>
