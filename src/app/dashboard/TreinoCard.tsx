@@ -65,7 +65,7 @@ export function TreinoCard({ treino }: { treino: TreinusExercise }) {
             </h4>
 
             <div className="flex flex-wrap gap-3 mt-3">
-              {treino.Distance > 0 && (
+              {(treino.Distance ?? 0) > 0 && (
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
                   <Map className="w-3.5 h-3.5" />
                   {treino.Distance} {treino.DistanceUnit}
