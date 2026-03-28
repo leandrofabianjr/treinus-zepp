@@ -3,9 +3,18 @@ export interface SmartItems {
   [key: string]: any;
 }
 
-export interface ExerciseData {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
+export interface AthleteData {
+  IdAthlete: number;
+  IdTeam: number;
+  Name: string;
+  FirstName: string;
+  LastName: string;
+  PictureImageUrl: string | null;
+  CoachName: string;
+  CategoryName: string;
+  BirthDate: string;
+  Age: number;
+  email: string;
 }
 
 export interface TreinusExercise {
@@ -49,16 +58,21 @@ export interface TreinusExercise {
   CoachName: string;
 }
 
-// Interface para a estrutura completa que salvamos no Zustand
-export interface TreinusData {
+/**
+ * Interface para o Store de Sessão (Dados leves e persistentes)
+ */
+export interface TreinusSession {
   idTeam: number | null;
   idAthlete: number | null;
-  exerciseSheet: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Athlete: any;
-    PeriodizationView: {
-      ExercisesPlan: TreinusExercise[];
-    };
-  } | null;
   smartItems: SmartItems | null;
+}
+
+/**
+ * Interface para o Store de Planilha (Dados pesados e diários)
+ */
+export interface TreinusData {
+  Athlete: AthleteData | null;
+  PeriodizationView: {
+    ExercisesPlan: TreinusExercise[];
+  } | null;
 }
