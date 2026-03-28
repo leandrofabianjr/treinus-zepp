@@ -57,6 +57,8 @@ export interface WorkoutStep {
 
   PaceMin: number | null;
   PaceMinUnit: string | null;
+  PaceMax: number | null;
+  PaceMaxUnit: string | null;
   Intensity: number | null;
 
   Steps: WorkoutStep[];

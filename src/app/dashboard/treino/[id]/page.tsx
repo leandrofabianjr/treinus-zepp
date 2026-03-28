@@ -1,6 +1,8 @@
 'use client';
 
+import { createZeppGistAction } from '@/actions/zepp';
 import { ParsedStep, parseWorkoutSteps } from '@/lib/treinus-data-parser';
+import { convertToZeppFormat } from '@/lib/zeep-converter';
 import { useTreinusDataStore } from '@/store/useTreinusDataStore';
 import { useTreinusSessionStore } from '@/store/useTreinusSessionStore';
 import {
@@ -8,10 +10,14 @@ import {
   CheckCircle2,
   ChevronLeft,
   Clock,
+  Copy,
   Dumbbell,
+  FileOutput,
   ListChecks,
+  Loader2,
   Map,
   Repeat,
+  Smartphone,
   Target,
   Timer,
 } from 'lucide-react';
@@ -49,6 +55,41 @@ export default function TreinoDetalhesPage() {
     if (!treino || !smartItems) return [];
     return parseWorkoutSteps(treino.Detail?.List || [], smartItems);
   }, [treino, smartItems]);
+
+  const [gistUrl, setGistUrl] = React.useState<string | null>(null);
+  const [zeppDeepLink, setZeppDeepLink] = React.useState<string | null>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  const handleExportToZepp = async () => {
+    if (!treino || !smartItems) return;
+    setIsSaving(true);
+
+    try {
+      // 1. Converte o treino usando o parser que criamos
+      const zeppData = convertToZeppFormat(
+        treino,
+        smartItems,
+        'leandrofabianjr',
+      );
+
+      // 2. Salva no GitHub Gist via Server Action
+      const result = await createZeppGistAction(params.id as string, zeppData);
+
+      if (result.success && result.url) {
+        setGistUrl(result.url);
+
+        // 3. Monta o link especial da API Zepp
+        const deepLink = `https://api-mifit.zepp.com/v1/sport/shareTrainingTemplate/content?data=${encodeURIComponent(result.url)}&source=watch&name=trainingtemplate&target=share#/`;
+        setZeppDeepLink(deepLink);
+      } else {
+        alert('Erro: ' + result.error);
+      }
+    } catch (err) {
+      alert('Erro crítico ao gerar integração.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!treino) {
     return (
@@ -156,6 +197,71 @@ export default function TreinoDetalhesPage() {
           </div>
         </section>
       )}
+
+      <section className="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl space-y-6 shadow-2xl">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-orange-500/20 rounded-2xl">
+            <FileOutput className="w-6 h-6 text-orange-500" />
+          </div>
+          <div>
+            <h3 className="font-bold text-white text-lg">
+              Exportar para Amazfit
+            </h3>
+            <p className="text-zinc-400 text-sm">
+              O treino será exportado para ser lido pelo App Zepp.
+            </p>
+          </div>
+        </div>
+
+        {!gistUrl ? (
+          <button
+            onClick={handleExportToZepp}
+            disabled={isSaving}
+            className="w-full py-4 bg-orange-500 hover:bg-orange-600 disabled:bg-zinc-800 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 active:scale-95"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Enviando para o Gist...
+              </>
+            ) : (
+              'Gerar Integração Zepp'
+            )}
+          </button>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in zoom-in-95 duration-300">
+            <a
+              href={zeppDeepLink || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-3 px-6 py-4 bg-white text-black rounded-2xl font-black hover:bg-zinc-200 transition-all active:scale-95"
+            >
+              <Smartphone className="w-5 h-5" />
+              ABRIR NO APP ZEPP
+            </a>
+
+            <div className="flex items-center gap-2 p-2 bg-zinc-800 rounded-2xl border border-zinc-700">
+              <div className="flex-grow px-3 overflow-hidden">
+                <p className="text-[9px] text-zinc-500 uppercase font-bold">
+                  Gist Raw URL
+                </p>
+                <p className="text-[10px] font-mono text-zinc-300 truncate">
+                  {gistUrl}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(gistUrl);
+                  alert('URL do Gist copiada!');
+                }}
+                className="p-3 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded-xl transition-colors"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
       <section className="space-y-6">
         <div className="flex items-center gap-3 px-2">
