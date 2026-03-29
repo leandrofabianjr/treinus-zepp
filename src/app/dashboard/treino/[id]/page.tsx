@@ -28,18 +28,16 @@ export default function TreinoDetalhesPage() {
   const params = useParams();
   const router = useRouter();
 
-  // 1. Seletores simplificados (evita criar novas referências no seletor)
   const periodizationView = useTreinusDataStore(
     (state) => state.PeriodizationView,
   );
-  const smartItems = useTreinusSessionStore((state) => state.smartItems);
 
-  // 2. Memoize a lista de exercícios para garantir estabilidade referencial
   const exercisesPlan = React.useMemo(() => {
     return periodizationView?.ExercisesPlan || [];
   }, [periodizationView]);
 
-  // 3. Localiza o treino
+  const smartItems = useTreinusSessionStore((state) => state.smartItems);
+
   const treino = React.useMemo(() => {
     if (!params.id) return null;
     return exercisesPlan.find((t) => t.IdExercise.toString() === params.id);

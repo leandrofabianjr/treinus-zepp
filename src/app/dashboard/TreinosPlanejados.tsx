@@ -8,10 +8,13 @@ import React from 'react';
 import { TreinoCard } from './TreinoCard';
 
 export function TreinosPlanejados() {
-  // Consome do novo Data Store focado em performance
-  const exercisesPlan = useTreinusDataStore(
-    (state) => state.PeriodizationView?.ExercisesPlan || [],
+  const periodizationView = useTreinusDataStore(
+    (state) => state.PeriodizationView,
   );
+
+  const exercisesPlan = React.useMemo(() => {
+    return periodizationView?.ExercisesPlan || [];
+  }, [periodizationView]);
 
   // Usamos o lastSync do SessionStore para saber se já houve alguma carga
   const lastSync = useTreinusSessionStore((state) => state.lastSync);
