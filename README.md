@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏃‍♂️ Treinus - Zepp
 
-## Getting Started
+![Next.js](https://img.shields.io/badge/Next.js-000?style=for-the-badge&logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![GitHub Gists](https://img.shields.io/badge/GitHub_Gists-181717?style=for-the-badge&logo=github&logoColor=white)
 
-First, run the development server:
+> Uma ponte inteligente entre a sua planilha de treinos da **Treinus** e o seu relógio **Amazfit**, automatizando a criação de treinos estruturados no app **Zepp**.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🎯 O Problema
+Muitos atletas utilizam a plataforma Treinus para receber orientações de seus treinadores, mas a exportação de treinos estruturados (com blocos de tiro, aquecimento e recuperação) para relógios Amazfit não é nativa. Criar manualmente cada passo no app Zepp é um processo lento e sujeito a erros.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 A Solução
+Este app automatiza todo o fluxo:
+1. **Parser Inteligente**: Transforma a estrutura complexa e recursiva do JSON da Treinus em uma linha do tempo visual e técnica.
+2. **Conversor Zepp**: Traduz métricas de corrida (Pace em min/km para segundos/km) e tipos de segmentos (aquecimento, treino, descanso) para o esquema oficial da Zepp.
+3. **Integração Cloud**: Salva o treino estruturado em um **GitHub Gist Secret** para gerar uma URL pública estável.
+4. **Deep Linking**: Gera um QR Code e um link direto que dispara o App Zepp no smartphone, já na tela de importação do treino.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ✨ Funcionalidades Principais
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+-   **Dashboard de Treinos**: Visualização clara dos treinos planejados.
+-   **Timeline Estruturada**: Renderização recursiva que suporta blocos complexos como *"Repetir 7x (200m Forte + 300m Trote)"*.
+-   **Cálculo Automático de Alvos**: Conversão de zonas de intensidade (Z1, Z2, Z3...) em alertas de ritmo (Pace) no relógio.
+-   **Modo Desktop & Mobile**: 
+    -   No PC: Exibe um QR Code com a logo Zepp para scan rápido.
+    -   No Smartphone: Botão "Abrir no App" via *custom URL scheme* (`amazfit://`).
+-   **Gestor de Gists**: Página dedicada para listar e excluir os arquivos temporários criados no seu GitHub.
 
-## Learn More
+## 🛠️ Tecnologias
 
-To learn more about Next.js, take a look at the following resources:
+-   **Framework**: Next.js 14 (App Router)
+-   **Linguagem**: TypeScript (Tipagem estrita para o protocolo Zepp)
+-   **Estado**: Zustand com persistência local.
+-   **Estilização**: Tailwind CSS & Lucide React Icons.
+-   **Integração**: GitHub API (Gists).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## ⚙️ Configuração para Devs
 
-## Deploy on Vercel
+1. Clone o repositório:
+   ```bash
+   git clone https://github.com/seu-usuario/treinus-zepp-sync.git
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. Instale as dependências:
+   ```bash
+   npm install
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. Configure as variáveis de ambiente no arquivo `.env.local`:
+   ```env
+   GITHUB_TOKEN=seu_token_aqui
+   ```
+
+4. Inicie o servidor de desenvolvimento:
+   ```bash
+   npm run dev
+   ```
+
+---
+Desenvolvido por **Leandro Fabian Jr.** 🚀🫂
